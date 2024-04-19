@@ -1,10 +1,52 @@
-"use client";
+import Link from "next/link"
 
-import React from "react";
+import { siteConfig } from "@/app/config/site"
+import { buttonVariants } from "@/app/components/ui/button"
+import { Icons } from "@/app/components/icons"
+import { MainNav } from "@/app/components/main-nav"
+import { ModeToggle } from "@/app/components/theme-mode-toggle"
 
-export default function Header() {
-
-  return <div>
-    <p>Header</p>
-  </div>
+export function SiteHeader() {
+  return (
+    <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 w-full border-b">
+      <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
+        <MainNav items={siteConfig.mainNav} />
+        <div className="flex flex-1 items-center justify-end space-x-4">
+          <nav className="flex items-center space-x-1">
+            <Link
+              href={siteConfig.links.github}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <div
+                className={buttonVariants({
+                  size: "icon",
+                  variant: "ghost",
+                })}
+              >
+                <Icons.gitHub className="h-5 w-5" />
+                <span className="sr-only">GitHub</span>
+              </div>
+            </Link>
+            <Link
+              href={siteConfig.links.twitter}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <div
+                className={buttonVariants({
+                  size: "icon",
+                  variant: "ghost",
+                })}
+              >
+                <Icons.twitter className="h-5 w-5 fill-current" />
+                <span className="sr-only">Twitter</span>
+              </div>
+            </Link>
+            <ModeToggle />
+          </nav>
+        </div>
+      </div>
+    </header>
+  )
 }
