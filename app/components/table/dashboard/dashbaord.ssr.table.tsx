@@ -102,7 +102,7 @@ export default function DashboardSsrTableUI({ initData, session, }: { session: S
           .toString()
           .toLowerCase()
           .includes(filterValue.toLowerCase()) ||
-        item.status
+        item.niveau_reservation
           .toString()
           .toLowerCase()
           .includes(filterValue.toLowerCase())
@@ -111,7 +111,7 @@ export default function DashboardSsrTableUI({ initData, session, }: { session: S
 
     if (statusFilter !== "all" && Array.from(statusFilter).length !== statusOptions.length) {
       FindReservation = FindReservation.filter((res) =>
-        Array.from(statusFilter).includes(res.status),
+        Array.from(statusFilter).includes(res.niveau_reservation),
       );
     }
 
@@ -160,7 +160,7 @@ export default function DashboardSsrTableUI({ initData, session, }: { session: S
           );
         case "statut":
           return <p>
-            {statusOptions.find(item => item.uid === res.status)?.name}
+            {statusOptions.find(item => item.uid === res.niveau_reservation)?.name}
           </p>
         case "client":
           return (
@@ -172,7 +172,7 @@ export default function DashboardSsrTableUI({ initData, session, }: { session: S
 
           return (
             <>
-              {res.status !== ReservationStatusEnum.U &&
+              {res.niveau_reservation !== ReservationStatusEnum.U &&
                 <ActionAnnonce
                   handleFindReservartion={handleFindReservation}
                   reservation={res}
@@ -438,7 +438,7 @@ export const ActionAnnonce = ({
   const { toast } = useToast()
 
   const handleChangeState = async (status: ReservationStatusEnum) => {
-    const update = await UpdateReservationApi(reservation.id, { status });
+    const update = await UpdateReservationApi(reservation.id, { niveau_reservation: status });
     if (
       update.hasOwnProperty("statusCode") &&
       update.hasOwnProperty("message")
@@ -472,17 +472,17 @@ export const ActionAnnonce = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent aria-label="Table Columns">
           <DropdownMenuGroup>
-            {(reservation.status === ReservationStatusEnum.P) &&
+            {(reservation.niveau_reservation === ReservationStatusEnum.P) &&
               <DropdownMenuItem onClick={() => { handleChangeState(ReservationStatusEnum.PC) }}>
                 Payer
               </DropdownMenuItem>
             }
-            {reservation.status !== ReservationStatusEnum.U &&
+            {reservation.niveau_reservation !== ReservationStatusEnum.U &&
               <DropdownMenuItem onClick={() => { handleChangeState(ReservationStatusEnum.C) }}>
                 Annuler
               </DropdownMenuItem>
             }
-            {reservation.status === ReservationStatusEnum.PC &&
+            {reservation.niveau_reservation === ReservationStatusEnum.PC &&
               <DropdownMenuItem onClick={() => { handleChangeState(ReservationStatusEnum.U) }}>
                 Consomer
               </DropdownMenuItem>

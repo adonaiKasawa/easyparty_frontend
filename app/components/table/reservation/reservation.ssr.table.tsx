@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
+import React, { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import {
   Table,
   TableHeader,
@@ -17,7 +17,7 @@ import { Pagination } from "@nextui-org/pagination";
 import { ChevronDown, ChevronDownIcon, Search, SearchIcon, } from "lucide-react";
 import { Session } from "next-auth/types";
 import moment from "moment";
-import { IReservation } from "@/app/types/interfaces";
+import { IReservation, IResevationPrint, IServices } from "@/app/types/interfaces";
 import { capitalize } from "@/app/config/tools";
 import { file_url, local_file_url } from "@/app/lib/actions/action";
 import { AvatarIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
@@ -36,13 +36,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu";
 import { ReservationStatusEnum } from "@/app/types/enums/reservation.enum";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { useToast } from "../../ui/use-toast";
 import { useRouter } from "next/navigation";
+import { useReactToPrint } from "react-to-print";
+import { ReservationPreformatInvocePrint, ReservationReportingPrint } from "../../print";
+import { Label } from "../../ui/label";
+import { DatePickerUI } from "../../ui/date-picker";
 
-const statusColorMap: Record<string, ChipProps["color"]> = {
+export const statusColorMap: Record<string, ChipProps["color"]> = {
   payment_confim: "success",
   pending: "danger",
   consume: "secondary",
@@ -55,8 +59,12 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
   const INITIAL_VISIBLE_COLUMNS = ["#", "#n", "room", "date", "number_days", "date_start", "date_end", "statut", "actions"]
 
   const [reservation, setReservation] = useState<IReservation[]>(initData);
-  const [day, setDay] = useState<any[]>([]);
 
+  const [dateDebut, setDateDebut] = useState<Date>();
+  const [dateFin, setDateFin] = useState<Date>();
+
+  const [dateDebutFilter, setDateDebutFilter] = useState<Date>();
+  const [dateFinFilter, setDateFinFilter] = useState<Date>();
   const [filterValue, setFilterValue] = React.useState("");
   const [selectedKeys, setSelectedKeys] = React.useState<Set<String>>(new Set([]));
 
@@ -68,7 +76,15 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
     column: "status",
     direction: "ascending",
   });
+
   let i = 1;
+
+  const componentRef = useRef(null);
+
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current,
+  });
+
 
   const [page, setPage] = React.useState(1);
 
@@ -89,39 +105,44 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
 
     if (hasSearchFilter) {
       FindReservation = FindReservation.filter((item) =>
-        item.rooms.name
-          .toString()
-          .toLowerCase()
-          .includes(filterValue.toLowerCase())
-        ||
-        item.rooms.city
-          .toString()
-          .toLowerCase()
-          .includes(filterValue.toLowerCase()) ||
-        `${item.user.nom} ${item.user.prenom}`
-          .toString()
-          .toLowerCase()
-          .includes(filterValue.toLowerCase()) ||
-        `${item.user.prenom} ${item.user.nom}`
-          .toString()
-          .toLowerCase()
-          .includes(filterValue.toLowerCase()) ||
-        item.status
-          .toString()
-          .toLowerCase()
-          .includes(filterValue.toLowerCase())
+        `000${item.id}`.toString().toLowerCase().includes(filterValue.toLowerCase()) ||
+        item.rooms.name.toString().toLowerCase().includes(filterValue.toLowerCase()) ||
+        `${item.user.nom} ${item.user.prenom}`.toString().toLowerCase().includes(filterValue.toLowerCase()) ||
+        `${item.user.prenom} ${item.user.nom}`.toString().toLowerCase().includes(filterValue.toLowerCase()) ||
+        item.niveau_reservation.toString().toLowerCase().includes(filterValue.toLowerCase()) ||
+        `${moment(item.createdAt).format("DD/MM/YYYY")}`.toString().toLowerCase().includes(filterValue.toLowerCase()) ||
+        `${moment(item.date_start).format("DD/MM/YYYY")}`.toString().toLowerCase().includes(filterValue.toLowerCase()) ||
+        `${moment(item.date_end).format("DD/MM/YYYY")}`.toString().toLowerCase().includes(filterValue.toLowerCase())
+
       );
     }
 
     if (statusFilter !== "all" && Array.from(statusFilter).length !== statusOptions.length) {
       FindReservation = FindReservation.filter((res) =>
-        Array.from(statusFilter).includes(res.status),
+        Array.from(statusFilter).includes(res.niveau_reservation),
       );
     }
 
+    if (dateDebutFilter || dateFinFilter) {
+      const start = moment(dateDebutFilter);
+      const end = moment(dateFinFilter);
+
+      FindReservation = FindReservation.filter((item) => {
+        const d = moment(item.createdAt);
+        if (start.isSame(end)) {
+          console.log(start.calendar());
+          console.log(d.calendar());
+          return d.format("DD/MM/YYYY") === start.format("DD/MM/YYYY")
+        } else {
+          return d.isBetween(start, end)
+        }
+      })
+      // console.log("change", moment(dateDebutFilter).format("DD/MM/YYYY"));
+      // console.log("change", moment(dateFinFilter).format("DD/MM/YYYY"));
+    }
 
     return FindReservation;
-  }, [reservation, filterValue, statusFilter]);
+  }, [reservation, filterValue, statusFilter, dateDebutFilter, dateFinFilter]);
 
   const items = React.useMemo(() => {
     const start = (page - 1) * rowsPerPage;
@@ -173,11 +194,11 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
         case "statut":
           return <Chip
             className="border-none gap-1 text-default-600"
-            color={statusColorMap[res.status]}
+            color={statusColorMap[res.niveau_reservation]}
             size="sm"
             variant="dot"
           >
-            {statusOptions.find(item => item.uid === res.status)?.name}
+            {statusOptions.find(item => item.uid === res.niveau_reservation)?.name}
           </Chip>
         case "client":
           return (
@@ -189,7 +210,7 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
 
           return (
             <>
-              {res.status !== ReservationStatusEnum.U &&
+              {res.niveau_reservation !== ReservationStatusEnum.U &&
                 <ActionAnnonce
                   handleFindReservartion={handleFindReservation}
                   reservation={res}
@@ -206,13 +227,10 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
     []
   );
 
-  const onRowsPerPageChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setRowsPerPage(Number(e.target.value));
-      setPage(1);
-    },
-    []
-  );
+  const onRowsPerPageChange = React.useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setRowsPerPage(Number(e.target.value));
+    setPage(1);
+  }, []);
 
   const onSearchChange = React.useCallback((value?: string) => {
     if (value) {
@@ -236,13 +254,21 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
     }
   };
 
+  const onFilterByDateRange = React.useCallback(() => {
+
+    setDateDebutFilter(dateDebut);
+    setDateFinFilter(dateFin)
+
+  }, [dateDebut, dateFin, dateDebutFilter, dateFinFilter]);
+
   const topContent = React.useMemo(() => {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex justify-between gap-3 items-end">
-          <LabelInputContainer className="mb-4 w-56">
+          <LabelInputContainer className="">
+            <Label>Recherche</Label>
             <Input
-              startContent={<SearchIcon className="text-default-300" />}
+              startContent={<SearchIcon className="text-default-300 ml-2" />}
               className="bg-mid-gray"
               id="city"
               value={filterValue}
@@ -250,6 +276,14 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
               placeholder="Kinshasa"
               type="text"
             />
+          </LabelInputContainer>
+          <LabelInputContainer>
+            <Label htmlFor="date_debut">Date de fin</Label>
+            <DatePickerUI label="Sélectionner une date" date={dateDebut} setDate={setDateDebut} />
+          </LabelInputContainer>
+          <LabelInputContainer>
+            <Label htmlFor="date_fin">Date de fin</Label>
+            <DatePickerUI label="Sélectionner une date" date={dateFin} setDate={setDateFin} />
           </LabelInputContainer>
           <div className="flex gap-3">
             <DropdownMenu>
@@ -314,11 +348,13 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
                     )
                   })}
                 </DropdownMenuGroup>
-
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button>
-              Réserver une salle
+            <Button onClick={onFilterByDateRange}>
+              Filtrer
+            </Button>
+            <Button onClick={handlePrint}>
+              Imprimer
             </Button>
           </div>
         </div>
@@ -347,8 +383,11 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
     onSearchChange,
     onRowsPerPageChange,
     hasSearchFilter,
-    day,
-    setDay,
+    dateDebut,
+    dateFin,
+    onFilterByDateRange,
+    dateDebutFilter,
+    dateFinFilter,
   ]);
 
   const bottomContent = React.useMemo(() => {
@@ -373,71 +412,76 @@ export default function ReservationSsrTableUI({ initData, session, }: { session:
     );
   }, [selectedKeys, items.length, page, pages, hasSearchFilter]);
 
-  const classNames = React.useMemo(
-    () => ({
-      wrapper: ["max-h-[382px]", "max-w-3xl"],
-      th: ["bg-transparent", "text-default-500", "border-b", "border-divider"],
-      td: [
-        // first
-        "group-data-[first=true]:first:before:rounded-none",
-        "group-data-[first=true]:last:before:rounded-none",
-        // middle
-        "group-data-[middle=true]:before:rounded-none",
-        // last
-        "group-data-[last=true]:first:before:rounded-none",
-        "group-data-[last=true]:last:before:rounded-none",
-      ],
-    }),
-    []
-  );
-
-  useEffect(() => {
-    console.log(reservation);
-
-  }, [])
+  const classNames = React.useMemo(() => ({
+    wrapper: ["max-h-[382px]", "max-w-3xl"],
+    th: ["bg-transparent", "text-default-500", "border-b", "border-divider"],
+    td: [
+      // first
+      "group-data-[first=true]:first:before:rounded-none",
+      "group-data-[first=true]:last:before:rounded-none",
+      // middle
+      "group-data-[middle=true]:before:rounded-none",
+      // last
+      "group-data-[last=true]:first:before:rounded-none",
+      "group-data-[last=true]:last:before:rounded-none",
+    ],
+  }), []);
 
   return (
-    <Table
-      isCompact={false}
-      removeWrapper
-      aria-label="Example table with custom cells, pagination and sorting"
-      bottomContent={bottomContent}
-      bottomContentPlacement="outside"
-      checkboxesProps={{
-        classNames: {
-          wrapper:
-            "max-h-[382px] after:bg-foreground after:text-background text-background",
-        },
-      }}
-      classNames={classNames}
-      selectedKeys={"all"}
-      selectionMode="none"
-      sortDescriptor={sortDescriptor}
-      topContent={topContent}
-      topContentPlacement="outside"
-      onSortChange={setSortDescriptor}
-    >
-      <TableHeader columns={headerColumns}>
-        {(column) => (
-          <TableColumn
-            key={column.uid}
-            align={column.uid === "actions" ? "center" : "start"}
-            allowsSorting={column.sortable}
-          >
-            {column.name}
-          </TableColumn>
-        )}
-      </TableHeader>
-      <TableBody emptyContent={"Aucun reservation trouvé"} items={sortedItems}>
-        {(item: IReservation) => (
-          <TableRow key={item.id}>
-            {(columnKey) => (
-              <TableCell>{renderCell(item, columnKey)}</TableCell>
-            )}
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+    <main>
+      <Table
+        isCompact={false}
+        removeWrapper
+        aria-label="Example table with custom cells, pagination and sorting"
+        bottomContent={bottomContent}
+        bottomContentPlacement="outside"
+        checkboxesProps={{
+          classNames: {
+            wrapper:
+              "max-h-[382px] after:bg-foreground after:text-background text-background",
+          },
+        }}
+        classNames={classNames}
+        selectedKeys={"all"}
+        selectionMode="none"
+        sortDescriptor={sortDescriptor}
+        topContent={topContent}
+        topContentPlacement="outside"
+        onSortChange={setSortDescriptor}
+      >
+        <TableHeader columns={headerColumns}>
+          {(column) => (
+            <TableColumn
+              key={column.uid}
+              align={column.uid === "actions" ? "center" : "start"}
+              allowsSorting={column.sortable}
+            >
+              {column.name}
+            </TableColumn>
+          )}
+        </TableHeader>
+        <TableBody emptyContent={"Aucun reservation trouvé"} items={sortedItems}>
+          {(item: IReservation) => (
+            <TableRow key={item.id}>
+              {(columnKey) => (
+                <TableCell>{renderCell(item, columnKey)}</TableCell>
+              )}
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      <div className="hidden">
+        <ReservationReportingPrint
+          filter={{
+            keyWord: filterValue,
+            dateDebutFilter,
+            dateFinFilter,
+            statusFilter
+          }}
+          data_print={sortedItems}
+          ref={componentRef} />
+      </div>
+    </main>
   );
 }
 
@@ -452,11 +496,40 @@ export const ActionAnnonce = ({
   all_reservation: IReservation[];
   handleFindReservartion: () => void;
 }) => {
+  const [data_print, setData_print] = useState<IResevationPrint>()
+
   const { toast } = useToast()
   const router = useRouter();
+  const componentRef = useRef(null);
+  const print = useReactToPrint({
+    content: () => componentRef.current,
+  });
+
+  const handlePrint = () => {
+    let res_serv: IServices[] = []
+    let totalJours = moment(reservation.date_end).diff(moment(reservation.date_start), "days") + 1;
+    reservation.res_serv?.map((item) => {
+      res_serv.push(item.service)
+    })
+    setData_print({
+      date_start: reservation.date_start,
+      date_end: reservation.date_end,
+      room: reservation.rooms,
+      picture: `${local_file_url}${reservation.rooms.visuals[0]}`,
+      number_person: reservation.number_person,
+      client: reservation.user,
+      niveau_reservation: ReservationStatusEnum.P,
+      res_serv,
+      numbre_jour: totalJours,
+      reservation
+    });
+    setTimeout(() => {
+      print()
+    });
+  }
 
   const handleChangeState = async (status: ReservationStatusEnum) => {
-    const update = await UpdateReservationApi(reservation.id, { status });
+    const update = await UpdateReservationApi(reservation.id, { niveau_reservation: status });
     if (
       update.hasOwnProperty("statusCode") &&
       update.hasOwnProperty("message")
@@ -480,6 +553,7 @@ export const ActionAnnonce = ({
     }
   };
 
+
   return (
     <div className="relative flex justify-end items-center gap-2">
       <DropdownMenu>
@@ -490,19 +564,22 @@ export const ActionAnnonce = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent aria-label="Table Columns">
           <DropdownMenuGroup>
-            {(reservation.status === ReservationStatusEnum.P) &&
-              <DropdownMenuItem onClick={() => { 
+            <DropdownMenuItem onClick={handlePrint}>
+              Imprimer
+            </DropdownMenuItem>
+            {(reservation.niveau_reservation === ReservationStatusEnum.P) &&
+              <DropdownMenuItem onClick={() => {
                 router.push(`/payment/reservation/${reservation.id}`)
-               }}>
+              }}>
                 Payer
               </DropdownMenuItem>
             }
-            {reservation.status !== ReservationStatusEnum.U &&
+            {reservation.niveau_reservation !== ReservationStatusEnum.U &&
               <DropdownMenuItem onClick={() => { handleChangeState(ReservationStatusEnum.C) }}>
                 Annuler
               </DropdownMenuItem>
             }
-            {reservation.status === ReservationStatusEnum.PC &&
+            {reservation.niveau_reservation === ReservationStatusEnum.PC &&
               <DropdownMenuItem onClick={() => { handleChangeState(ReservationStatusEnum.U) }}>
                 Consomer
               </DropdownMenuItem>
@@ -510,6 +587,11 @@ export const ActionAnnonce = ({
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div >
+      <div className="hidden">
+        {data_print &&
+          <ReservationPreformatInvocePrint reservation={data_print} ref={componentRef} />
+        }
+      </div>
+    </div>
   );
 };

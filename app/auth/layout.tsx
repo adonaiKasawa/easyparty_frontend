@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { Inter as FontSans } from "next/font/google";
 
-import "./styles/globals.css";
-import { cn } from "./lib/utils";
+import "../styles/globals.css";
 import { ThemeProvider } from "@/app/components/theme-provider"
-import { siteConfig } from "./config/site";
-import SiteHeader from "./components/page-header";
-import { Toaster } from "./components/ui/toaster"
-import { auth } from "./(core)/auth/[...nextauth]";
 import { redirect } from "next/navigation";
+import { siteConfig } from "@/app/config/site";
+import { auth } from "./[...nextauth]";
+import { cn } from "@/app/lib/utils";
+import { Toaster } from "@/app/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: {
@@ -36,9 +35,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
-  if (!session) {
-    redirect("/auth");
-  }
 
   return (
     <html lang="en">
@@ -54,7 +50,6 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <div className="relative flex min-h-screen flex-col">
-            <SiteHeader />
             <div className="flex-1">{children}</div>
             <Toaster />
           </div>

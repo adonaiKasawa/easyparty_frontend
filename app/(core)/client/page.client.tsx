@@ -11,7 +11,7 @@ export default  function ClientPage({session, initData}: {session: Session, init
 
 
   return <main className="contain px-24 py-8">
-    <p className="font-medium text-5xl">Clients</p>
+    <p className="font-bold text-7xl">Clients</p>
     <div className="mt-4">
       <ClientSsrTableUI session={session} initData={clients} />
     </div>

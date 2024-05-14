@@ -30,6 +30,7 @@ export function DatePickerUI({ date, setDate, label }: { label?: string, date: D
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
+        <Button onClick={() => {setDate(undefined)}} className="w-full">effacer</Button>
         <Calendar
           mode="single"
           selected={date}

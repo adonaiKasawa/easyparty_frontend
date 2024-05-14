@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FindRoomByIdApi } from "@/app/lib/actions/rooms/rooms.req";
 import { local_file_url } from "@/app/lib/actions/action";
-import { IRooms, IServices, IUser } from "@/app/types/interfaces";
+import { IResevationPrint, IRooms, IServices, IUser } from "@/app/types/interfaces";
 import Image from "next/image";
 
 import {
@@ -17,7 +17,7 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { LabelInputContainer } from "@/app/components/auth/signin/signin.ui";
 import { DatePickerUI } from "@/app/components/ui/date-picker";
-import { ReservationRoomsApi } from "@/app/lib/actions/reservation/reservation.req";
+import { CreateResevationDto, ReservationRoomsApi } from "@/app/lib/actions/reservation/reservation.req";
 import { useToast } from "@/app/components/ui/use-toast";
 import { Label } from "@/app/components/ui/label";
 import { Input } from "@/app/components/ui/input";
@@ -43,6 +43,12 @@ import { FindServicesApi } from "@/app/lib/actions/services/services.req";
 import moment from "moment";
 import { findUserByPrivilegeApi } from "@/app/lib/actions/auth";
 import { PrivilegesEnum } from "@/app/types/enums/privilege.enum";
+import { ReservationStatusEnum } from "@/app/types/enums/reservation.enum";
+
+import { useReactToPrint } from 'react-to-print';
+import { ReservationPreformatInvocePrint } from "@/app/components/print";
+import { useRouter } from "next/navigation";
+import { Pending } from "@/app/components/pending";
 
 export default function DetailsRoomPage({ params }: { params: { id: string } }) {
   const [room, setRoom] = useState<IRooms>();
@@ -55,9 +61,23 @@ export default function DetailsRoomPage({ params }: { params: { id: string } }) 
   const [totalJours, setTotalJours] = useState<number>(0);
   const [client, setClient] = useState<number>(0);
   const [clients, setClients] = useState<IUser[]>([]);
+  const [hidden, setHidden] = useState<boolean>(false);
+
+  const [reservation, setReservation] = useState<IResevationPrint>();
+  const [pending, setPending] = useState<boolean>(false);
 
   const { toast } = useToast();
 
+  const route = useRouter();
+  const componentRef = useRef(null);
+
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current,
+    onAfterPrint: () => onAfterPrint()
+  });
+  const onAfterPrint = () => {
+    route.push("/reservation")
+  }
 
   const handelFindRoomById = useCallback(async () => {
     const find = await FindRoomByIdApi(params.id);
@@ -91,21 +111,51 @@ export default function DetailsRoomPage({ params }: { params: { id: string } }) 
             services.push(item.id)
           })
           console.log(services);
-
+          setPending(true)
           const req = await ReservationRoomsApi({
             date_start: date,
             date_end: dateFin,
             roomId: room.id,
             number_person: numberPerson,
             reservice: services,
-            clientId: client
+            clientId: client,
+            niveau_reservation: ReservationStatusEnum.P
           });
+
           if (!req.hasOwnProperty('StatusCode') && !req.hasOwnProperty('message')) {
-            toast({
-              title: "Réservation réussi",
-              description: "Votre servation se bien passer",
-            });
+
+            console.log(req);
+
+            const user = clients.find((item) => item.id === client);
+            if (user) {
+              console.log("servicesSelected",servicesSelected);
+              
+              setReservation({
+                date_start: date,
+                date_end: dateFin,
+                room: room,
+                picture: `${local_file_url}${room.visuals[0]}`,
+                number_person: numberPerson,
+                client: user,
+                niveau_reservation: ReservationStatusEnum.P,
+                res_serv: servicesSelected,
+                numbre_jour: totalJours,
+                reservation: req
+              });
+            }
+            setTimeout(() => {
+              toast({
+                title: "Réservation réussi",
+                description: "Votre servation se bien passer",
+              });
+              const print = handlePrint()
+              setPending(false)
+              console.log(print);
+            })
+
+
           } else {
+            setPending(false)
             let message = '';
             if (typeof req.message === "object") {
               req.message.map((item: string) => message += `${item} \n`)
@@ -118,6 +168,7 @@ export default function DetailsRoomPage({ params }: { params: { id: string } }) 
               description: message,
             });
           }
+
         } else {
           toast({
             variant: "destructive",
@@ -174,10 +225,13 @@ export default function DetailsRoomPage({ params }: { params: { id: string } }) 
     return total
   }
 
+
+
   useEffect(() => {
     handelFindRoomById();
     handleFindServices();
     handleFindClients();
+
   }, [])
 
   return <main className="container px-24 py-8">
@@ -307,13 +361,20 @@ export default function DetailsRoomPage({ params }: { params: { id: string } }) 
             </p>
           </div>
 
-          <Button onClick={handelReservationRooms}>
-            Vérifier & Réserver
+          <Button
+            disabled={pending}
+            onClick={handelReservationRooms}>
+            {pending ? <Pending /> : "Vérifier & Réserver"}
           </Button>
         </div>
       </div>
     }
 
+    <div className="hidden">
+      {reservation &&
+        <ReservationPreformatInvocePrint reservation={reservation} ref={componentRef} />
+      }
+    </div>
   </main>
 
 }

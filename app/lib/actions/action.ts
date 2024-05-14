@@ -1,4 +1,4 @@
-import { auth } from "@/app/(core)/auth/[...nextauth]";
+import { auth } from "@/app/auth/[...nextauth]";
 
 export const file_url = `https://d31uetu06bkcms.cloudfront.net/`;
 

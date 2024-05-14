@@ -2,7 +2,7 @@
 
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { HttpRequest } from "../action";
-import { auth } from "@/app/(core)/auth/[...nextauth]";
+import { auth } from "@/app/auth/[...nextauth]";
 
 export const CreateServicesApi = async (dto: {
   name: string,

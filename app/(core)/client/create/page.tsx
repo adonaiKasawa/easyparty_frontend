@@ -46,10 +46,9 @@ export default function CreateRooms() {
 
     if (!signUpUser.hasOwnProperty('StatusCode') && !signUpUser.hasOwnProperty('message')) {
       toast({
-        variant: "destructive",
         title: "Enregistrement réussi",
         description: "L'enregistrement du client se passe avec succès.",
-      })
+      });
     } else {
       let message = '';
       if (typeof signUpUser.message === "object") {
@@ -63,10 +62,6 @@ export default function CreateRooms() {
         description: message,
       })
     }
-
-    // formData.append("telephone", )
-    // authenticate(undefined, formData)
-
   };
 
 

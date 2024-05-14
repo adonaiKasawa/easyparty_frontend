@@ -21,7 +21,7 @@ export default function ServicesClientPage({ session, initData }: { session: Ses
 
   return <main className="container mx-auto px-24 py-8">
     <div className="flex items-center justify-between">
-      <p className="font-medium text-7xl">Services</p>
+      <p className="font-bold text-7xl my-8">Services</p>
       <AddServicesUI handleFindServices={handleFindServices} />
     </div>
 
@@ -29,7 +29,7 @@ export default function ServicesClientPage({ session, initData }: { session: Ses
     {services.length > 0 ?
       <main className="grid grid-cols-3 gap-4">
         {services.map((item: IServices) => {
-          return <Card className=" cursor-pointer">
+          return <Card key={`${item.createdAt}`} className=" cursor-pointer">
             <CardHeader>
               <CardTitle>
                 <p>{item.name}</p>

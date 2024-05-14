@@ -11,13 +11,12 @@ import { useToast } from "@/app/components/ui/use-toast";
 import { capitalize } from "@/app/config/tools";
 import { findUserByPrivilegeApi } from "@/app/lib/actions/auth";
 import { FindAllReservatioByIdApi } from "@/app/lib/actions/reservation/reservation.req";
-import { FindRoomByIdApi } from "@/app/lib/actions/rooms/rooms.req";
 import { FindServicesApi } from "@/app/lib/actions/services/services.req";
 import { PaymentModeEnum, PrivilegesEnum } from "@/app/types/enums/privilege.enum";
-import { IReservation, IRooms, IServices, IUser } from "@/app/types/interfaces";
+import { IPayementPrint, IReservation, IRooms, IServices, IUser } from "@/app/types/interfaces";
 import { ChevronDownIcon } from "lucide-react";
 import moment from "moment";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,10 +25,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/app/components/ui/dialog"
+} from "@/app/components/ui/dialog";
 import { ReloadIcon } from "@radix-ui/react-icons";
-import { CreatePayementApi } from "@/app/lib/actions/payement/payement.req";
+import { CreatePayementApi, FindPaymentByReservationIdApi } from "@/app/lib/actions/payement/payement.req";
 import { ReservationStatusEnum } from "@/app/types/enums/reservation.enum";
+import { PayementInvocePrint } from "@/app/components/print";
+import { useReactToPrint } from "react-to-print";
+import { useRouter } from "next/navigation";
 
 export default function PaymentReservation({ params }: { params: { id: string } }) {
   const [room, setRoom] = useState<IRooms>();
@@ -48,10 +50,23 @@ export default function PaymentReservation({ params }: { params: { id: string } 
   const [amountPayment, setAmountPayment] = useState<number>(0)
   const [modeOfPayment, setModeOfPayment] = useState<PaymentModeEnum>(PaymentModeEnum.FULL_PAYMENT)
 
+  const [data_print, setData_print] = useState<IPayementPrint>()
+
   const [open, setOpen] = useState<boolean>(false)
   const [pending, setPending] = useState<boolean>(false)
 
   const { toast } = useToast();
+  const router = useRouter();
+  const componentRef = useRef(null);
+
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current,
+    onAfterPrint: () => onAfterPrint()
+  });
+
+  const onAfterPrint = () => {
+    router.push("/payment")
+  }
 
   const handelFindReservationById = useCallback(async () => {
     const find: IReservation = await FindAllReservatioByIdApi(parseInt(params.id));
@@ -69,6 +84,10 @@ export default function PaymentReservation({ params }: { params: { id: string } 
         handeDateChange(find.date_start)
         handeDateFinChange(find.date_end)
         setNumberPerson(find.number_person)
+        const start = moment(find.date_start.toString())
+        const end = moment(find.date_end.toString())
+        const daysDiff = end.diff(start, 'days');
+        setTotalJours(daysDiff + 1)
       }
     }
   }, [reservation]);
@@ -94,18 +113,31 @@ export default function PaymentReservation({ params }: { params: { id: string } 
               number_person: numberPerson,
               clientId: client,
               reservice: services,
-              status: ReservationStatusEnum.PC,
+              niveau_reservation: ReservationStatusEnum.PC,
               roomId: room?.id,
               date_end: dateFin,
               date_start: date
             }
           }, reservation?.id);
-          setPending(false);
+
           if (!create?.hasOwnProperty('StatusCode') && !create?.hasOwnProperty('message')) {
-            toast({
-              title: "Payement.",
-              description: "Le payment se bien passer",
-            });
+            if (reservation) {
+              const payement = await FindPaymentByReservationIdApi(reservation?.id);
+              if (!payement?.hasOwnProperty('StatusCode') && !payement?.hasOwnProperty('message')) {
+                console.log(payement);
+
+                toast({
+                  title: "Payement",
+                  description: "Le payment se bien passer",
+                });
+                setPending(false);
+                setData_print(payement)
+
+                setTimeout(() => {
+                  handlePrint()
+                })
+              }
+            }
           } else {
             let message = '';
             if (typeof create.message === "object") {
@@ -115,16 +147,26 @@ export default function PaymentReservation({ params }: { params: { id: string } 
             }
             toast({
               variant: "destructive",
-              title: "Réservation échouée.",
+              title: "Paiement échouée.",
               description: message,
             });
           }
         }
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Paeiment échouée.",
+          description: "Veuillez saisir le montant proposé par le client.",
+        });
       }
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Paeiment échouée.",
+        description: "La réservation n'esxite pas.",
+      });
     }
   }
-
-
 
   const handleFindServices = useCallback(async () => {
     let find: IServices[] = await FindServicesApi();
@@ -172,8 +214,6 @@ export default function PaymentReservation({ params }: { params: { id: string } 
     }
     return total
   }
-
-
 
   useEffect(() => {
     handelFindReservationById();
@@ -285,7 +325,12 @@ export default function PaymentReservation({ params }: { params: { id: string } 
           <div>
             <Label htmlFor="number_personne">Montant proposer</Label>
             <Input className="w-full" id="number_personne"
-              value={amountSuggest} onChange={(e) => { setAmountSuggest(parseInt(e.target.value)) }}
+              value={amountSuggest} onChange={(e) => {
+                setAmountSuggest(parseInt(e.target.value));
+                if (modeOfPayment === PaymentModeEnum.FULL_PAYMENT) {
+                  setAmountPayment(parseInt(e.target.value));
+                }
+              }}
               placeholder="Montant proposer"
               type="number" />
           </div>
@@ -370,7 +415,11 @@ export default function PaymentReservation({ params }: { params: { id: string } 
             setOpen={setOpen}
             setPending={setPending}
           />
-
+          <div className="hidden">
+            {
+              data_print && <PayementInvocePrint data_print={data_print} ref={componentRef} />
+            }
+          </div>
         </div>
       </div>
     }

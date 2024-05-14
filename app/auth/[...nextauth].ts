@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { jwtDecode } from "jwt-decode";
 import moment from 'moment';
 import { authSigninUser, refreshAccessToken } from '@/app/lib/actions/auth';
-import { PayloadUserInterface } from '../../types/interfaces';
+import { PayloadUserInterface } from '../types/interfaces';
 
 
 
@@ -21,6 +21,8 @@ export const { auth, signIn, signOut } = NextAuth({
           if (!user.hasOwnProperty('StatusCode') && !user.hasOwnProperty('message')) {
             return user
           } else {
+            console.log(user);
+            
             return null
           }
         }

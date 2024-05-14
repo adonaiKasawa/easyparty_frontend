@@ -1,7 +1,7 @@
 "use server";
 
 import React from "react";
-import { auth } from "../auth/[...nextauth]";
+import { auth } from "../../auth/[...nextauth]";
 import { redirect } from "next/navigation";
 import ClientPage from "./page.client";
 import { findUserByPrivilegeApi } from "@/app/lib/actions/auth";

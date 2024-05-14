@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn, signOut } from "@/app/(core)/auth/[...nextauth]";
+import { signIn, signOut } from "@/app/auth/[...nextauth]";
 import { AuthError } from "next-auth";
 import { CreateAbonnementDto, CreateUserDto, Token } from "@/app/types/interfaces";
 import { HttpRequest, api_url } from "../../actions/action";
@@ -13,8 +13,9 @@ export async function authenticate(
 ) {
   try {
     const req = await signIn("credentials", formData);
-    console.log("authenticate req ", req);
   } catch (error: any) {
+    console.log("error my eerror", error);
+    
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":
@@ -28,7 +29,7 @@ export async function authenticate(
 
 export async function authSignOutUser() {
   await signOut();
-  redirect("/")
+  redirect("/auth/signin")
 }
 
 export async function authSigninUser({
@@ -103,9 +104,11 @@ export async function refreshAccessToken(token: Token) {
 
 export const Abonnement_access = async (dto: CreateAbonnementDto) => await HttpRequest('abonnement', 'POST', dto);
 
-export const findUserByIdApi = async (id: number) => await HttpRequest(`auth/getUserById/${id}`, 'GET');
+export const findUserByIdApi = async (id: number) => await HttpRequest(`auth/findUserById/${id}`, 'GET');
 
 export const checkValidateCodeApi = async (code: string, tel: string) => await HttpRequest(`auth/checkValideCode`, "POST", { code, tel })
 export const AuthsendSmsByTelApi = async (dto: { tel: string; email: string }) => await HttpRequest(`auth/sendSmsByTel?telephone=${dto.tel}&email=${dto.email}`, "GET");
 
 export const findUserByPrivilegeApi  = async (type: PrivilegesEnum) => await HttpRequest(`auth/findUserByPrivilege/${type}`, "GET");
+
+export const updateUserApi = async (dto: Partial<CreateUserDto>, id: number) => HttpRequest(`auth/${id}`, "PATCH", dto)

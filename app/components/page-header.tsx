@@ -8,7 +8,7 @@ import { Icons } from "@/app/components/icons"
 import { MainNav } from "@/app/components/main-nav"
 import { ModeToggle } from "@/app/components/theme-mode-toggle"
 import { PowerIcon, UserIcon } from "lucide-react"
-import { auth, signOut } from "../(core)/auth/[...nextauth]"
+import { auth, signOut } from "../auth/[...nextauth]"
 import { redirect } from "next/navigation"
 import { DropdownMenuDemo } from "./profile/avatar.user.ui";
 

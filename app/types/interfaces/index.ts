@@ -1,3 +1,4 @@
+import { CreateResevationDto } from "@/app/lib/actions/reservation/reservation.req";
 import { ReservationStatusEnum } from "../enums/reservation.enum";
 
 export interface PayloadUserInterface {
@@ -8,9 +9,9 @@ export interface PayloadUserInterface {
   email: string;
   username: null;
   privilege_user: string;
-  ville: string;
-  pays: string;
-  adresse: string;
+  ville?: string;
+  pays?: string;
+  adresse?: string;
   iat: number;
   exp: number;
 }
@@ -36,6 +37,7 @@ export interface CreateUserDto {
   adresse?: string;
   ville?: string;
   pays?: string;
+  confirm?: boolean
 }
 
 export interface IRooms {
@@ -85,7 +87,7 @@ export interface IReservation {
   date_start: Date;
   date_end: Date;
   number_person: number;
-  status: ReservationStatusEnum;
+  niveau_reservation: ReservationStatusEnum;
   user: IUser;
   rooms: IRooms;
   res_serv?: IResService[];
@@ -104,12 +106,16 @@ export interface IPayement {
   updatedAt: Date;
   deletedAt: null;
   id: number;
-  montant_paiement: string;
-  method_paiement: string;
-  reference_paiement: string;
+  montant_total_paiement: number,
+  montant_suggerer_paiement: number,
+  montant_paye_paiement: number,
+  mode_paiement: string
+  reference_paiement: string
   reservation: IReservation;
 }
-
+export interface IPayementCurrent extends IReservation {
+  paiement: IPayement[]
+}
 export interface IUser {
   createdAt: Date;
   updatedAt: Date;
@@ -131,4 +137,17 @@ export interface IUser {
   privilege?: string;
   status?: string;
   confirm?: boolean;
+}
+
+export interface IResevationPrint extends CreateResevationDto {
+  picture: string
+  res_serv: IServices[],
+  numbre_jour: number,
+  client: IUser;
+  room: IRooms;
+  reservation: IReservation
+}
+
+export interface IPayementPrint extends IPayementCurrent {
+
 }

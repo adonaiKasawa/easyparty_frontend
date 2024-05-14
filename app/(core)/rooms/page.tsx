@@ -1,7 +1,7 @@
 "use server";
 
 import React from "react";
-import { auth } from "../auth/[...nextauth]";
+import { auth } from "../../auth/[...nextauth]";
 import { FindAllRoomsApi } from "../../lib/actions/rooms/rooms.req";
 import RoomsListePage from "./page.client";
 import { IRooms } from "../../types/interfaces";

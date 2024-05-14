@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import { cn } from "@/app/lib/utils";
-import { authenticate } from "@/app/lib/actions/auth";
+import { authSigninUser, authenticate } from "@/app/lib/actions/auth";
 import { Button } from "../../ui/button";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useToast } from "@/app/components/ui/use-toast"
@@ -20,22 +20,39 @@ export function AuthSignInFormUI() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (telephone && password) {
-
       const formData = new FormData();
       formData.append("telephone", telephone);
       formData.append("password", password);
       setPending(true);
-      const loginResponse = await authenticate(undefined, formData);
-      setPending(false);
-      if (loginResponse === "Invalid credentials." || loginResponse === "Something went wrong.") {
+      const signin = await authSigninUser({ telephone, password });
+      console.log(signin);
+      if (!signin.hasOwnProperty('StatusCode') && !signin?.hasOwnProperty('message')) {
+        const loginResponse = await authenticate(undefined, formData);
+        setPending(false);
+        console.log(loginResponse);
+        if (loginResponse === "Invalid credentials." || loginResponse === "Something went wrong.") {
+          toast({
+            variant: "destructive",
+            title: "Connexion échoue",
+            description: "Indetifiant incorrect.",
+          })
+        } else {
+          document.location = "/rooms";
+        }
+      } else {
+        let message = '';
+        if (typeof signin.message === "object") {
+          signin.message.map((item: string) => message += `${item} \n`)
+        } else {
+          message = signin.message;
+        }
         toast({
           variant: "destructive",
-          title: "Connexion échoue",
-          description: "Indetifiant incorrect.",
+          title: "Inscription échoue",
+          description: message,
         })
-      } else {
-        document.location = "/rooms";
       }
+      setPending(false);
     } else {
       toast({
         variant: "destructive",

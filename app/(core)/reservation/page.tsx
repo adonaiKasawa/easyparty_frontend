@@ -1,7 +1,7 @@
 "use server";
 
 import React from "react";
-import { auth } from "../auth/[...nextauth]";
+import { auth } from "../../auth/[...nextauth]";
 import { IReservation} from "../../types/interfaces";
 import { redirect } from "next/navigation";
 import { PrivilegesEnum } from "../../types/enums/privilege.enum";
@@ -19,11 +19,11 @@ export default async function ReservationPage() {
   let findReservation: IReservation[] = await FindAllReservationApi(user.privilege_user === PrivilegesEnum.PSF, user.sub);
 
   if (findReservation?.hasOwnProperty('StatusCode') && findReservation?.hasOwnProperty('message')) {
-    findReservation = []
+    findReservation = [];
   }
 
   return <main className="container mx-auto px-24 py-8">
-    <p className="font-bold text-7xl">Réservations</p>
+    <p className="font-bold text-7xl my-8">Réservations</p>
     <ReservationSsrTableUI session={session} initData={findReservation} />
   </main>
 

@@ -2,7 +2,7 @@
 
 import { AddServicesUI } from "@/app/components/services/services.ui";
 import React from "react";
-import { auth } from "../auth/[...nextauth]";
+import { auth } from "../../auth/[...nextauth]";
 import { redirect } from "next/navigation";
 import { FindServicesApi } from "@/app/lib/actions/services/services.req";
 import { IServices } from "@/app/types/interfaces";
