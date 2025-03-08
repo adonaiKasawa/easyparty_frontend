@@ -29,6 +29,10 @@ export const siteConfig = {
       title: "Client",
       href: "/client",
     },
+    {
+      title: "Remboursement",
+      href: "/remboursement",
+    },
   ],
   links: {
     twitter: "https://twitter.com/MbulaAdonai",
